@@ -1,0 +1,32 @@
+
+---
+- name: Playbook Basic
+  hosts: linux                  #/etc/ansible/hosts
+  become: yes
+
+  vars:
+    srcf: ./test_file           #/etc/ansible
+    dstf: /home/krivenya_a
+
+
+  tasks: 
+  - name: First - PING server
+    ping:
+
+  - name: Second - INSTALL tree
+    yum: name=tree state=installed
+
+  - name: Third - COPY test_file
+    copy: src={{ srcf }} dest={{ dstf }} mode=755
+    notify: if_file_changed
+
+  - name: RUN command in SHELL (date)
+    shell: date
+
+
+
+  handlers: 
+  - name: if_file_changed
+    shell: echo "File {{srcf}} was changed and copied to {{dstf}} directory" | mailx -r "Ansible_sender" -s "handler - file {{srcf}} changed and copied to {{dstf}} directory" krivenya_a@exon-it.by
+    
+

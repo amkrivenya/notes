@@ -1,0 +1,73 @@
+
+
+--- ssh ----------------------
+------------------------------
+- add ansible user's id_ras.pub of tower host to /root/.ssh/authorized_keys at controlled hosts
+- set ansible_user in hosts
+
+vi /etc/ansible/hosts
+...
+[linux:vars]
+  ansible_user=root
+
+--- AD HOC Commands ----------
+------------------------------
+
+su ansible
+
+ansible -m ping linux
+ansible -m setup linux
+ansible -m copy -a "src=amk.txt dest=/home/krivenya_a mode=777" linux
+ansible -m shell -a "uptime" linux
+ansible -m command -a "uptime" linux  ### The command(s) will not be processed through the shell, so variables like $HOSTNAME and operations like "*", "<", ">", "|", ";" and "&" will not work. 
+ansible -m shell -a "ls -la /home/krivenya_a | grep amk" linux
+ansible -m file -a "path=/home/krivenya_a state=absent" linux
+ansible -m yum -a "name=tcpflow state=installed" linux
+ansible -m yum -a "name=tcpflow state=removed" linux
+
+ansible-inventory --list
+ansible -m yum -a "name=tcpflow state=removed" linux -b (-become)
+
+
+--- sudo ---------------------
+------------------------------
+
+ansible -m yum -a "name=tcpflow state=removed" linux -b (-become)
+
+# Controlled hosts
+visudo
+...
+ansible ALL=(root) NOPASSWD:ALL
+
+
+
+--- errors -------------------
+
+----
+[WARNING]: Platform linux on host amk is using the discovered Python interpreter at /usr/bin/python3.10, but future installation of another Python interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-core/2.13/reference_appendices/interpreter_discovery.html for more information.
+
+vi /etc/ansible/ansible.cfg
+[defaults]
+interpreter_python=/usr/bin/python3
+
+----
+ansible -m yum -a "name=tcpflow state=removed" linux 
+
+CAUSE THE ERROR:
+The error was: ImportError: No module named xml
+
+SOLUTION:
+
+OR global
+vi /etc/ansible/ansible.cfg
+[defaults]
+interpreter_python=/usr/bin/python3
+
+OR local
+vi /etc/ansible/hosts
+...
+[linux:vars]
+  ansible_python_interpreter=/usr/bin/python3
+
+------------------------------

@@ -1,0 +1,7 @@
+
+---
+ansible_user       : win_ansible
+ansible_password   : win_ansible_1
+ansible_port       : 5986
+ansible_connection : winrm
+
