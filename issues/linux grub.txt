@@ -1,0 +1,14 @@
+
+for GRUB nemu (and then single-user mode) press Shift/BIOS Esc/UEFI till start
+
+-> Advanced options -> press E (edit)
+
+find: linux   /boot/vmlinuz-... ro 
+change to: linux   /boot/vmlinuz-... rw init=/bin/bash
+
+press F10 
+
+
+
+----
+/boot/grub/grub.conf
