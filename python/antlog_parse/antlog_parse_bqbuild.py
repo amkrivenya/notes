@@ -1,18 +1,42 @@
 #!/usr/bin/python
 
-###   Comment: Parsing ant log
+###   Comment: Parsing ant log which is the result of compiling bisquit src 
 ###   Run by:  gitlab-runner
 ###   Used by: pipeline on the test stage (.gitlab-ci.yml), after compile
 ###   Author:  krivenya_a
 
 import os
+import inspect
 
-# Constantes              
+# Procedure for form vOS and send it by mailx
+def senderror():
+    # Forming command line for OS
+    vOS = 'echo -e "Error of compiling file in the pipeline:\x0A\x0A' + vFileName 
+    vOS = vOS + '\x0A\x0A\x0ALast commit at SVN repository was: \x0A\x0A' + vSVN 
+    vOS = vOS + '\x0A\x0AError: \x0A\x0A' + vError 
+
+#    vOS = vOS + '" | mailx -r "pipeline" -s "Error compiling file: ' + vFileName + '" ' + vDefault_recepients + ',' + vAuthor
+### temporary added for certain file bqunittest.r - email it only for vDefault_recepients 
+    if vError.find("bqunittest.r") > 0:
+        vOS = vOS + '" | mailx -r "pipeline" -s "Error compiling file: ' + vFileName + '" ' + vDefault_recepients
+    else:
+        vOS = vOS + '" | mailx -r "pipeline" -s "Error compiling file: ' + vFileName + '" ' + vDefault_recepients + ',' + vAuthor
+
+    os.system(vOS)
+
+
+# Configuration parameterss
 vcAnt_log_file='/home/gitlab-runner/builds/-gTWTeBL/0/buzhan_d/bq_build/ant_bqn.log'
-vcOutfile='/opt/bqbuild/amk_py/errors.txt'
+vDefault_recepients='krivenya_a@exon-it.by,buzhan_d@exon-it.by'
 
-vcUSER='sync'
-vcPASS='*********'
+# Creds for SVN
+vcUSER=***
+vcPASS=***
+
+# Get current script's directory to save in it file errors.txt with previous errors
+# https://stackoverflow.com/questions/3718657
+filename=inspect.getframeinfo(inspect.currentframe()).filename
+vcOutfile=os.path.dirname(os.path.abspath(filename)) + '/errors.txt'
 
 # If exist file with previous errors then rename it to _old, else - create empty file to compare "with nothing"
 if os.path.isfile(vcOutfile):
@@ -27,10 +51,13 @@ vfOutfile = open(vcOutfile, mode="w")
 
 # Start values
 vError = ''
-vFirst = True
 i=0
+# Flag for processing first error, cycle will define the end of the fist error by second "Error compiling"
+vFirst = True
+# Flag for processing last error, if it was the only one then mail will be send outside the main cycle
+vNewError = False
 
-# Cycle processing log file by lines and preparing blocks of separated error between lines with text "Error compiling file" 
+# Main cycle for processing logfile line by line and preparing blocks of errors, separated by lines with "Error compiling file" 
 for line in vfLogfile:
 
     if "Error compiling" in line:
@@ -39,20 +66,11 @@ for line in vfLogfile:
 
         # If it is the first error - do nothing - just ordinary action - preparing variables 
         # If it is not the first error - then sending email using collected variables (vError, vFileName, vSVN) 
-        if not vFirst and vNewError:
-            # Forming command line for OS
-            vOS = 'echo -e "Error compiling file:\x0A\x0A' + vFileName 
-            vOS = vOS + '\x0A\x0A\x0ALast commit at SVN repository was: \x0A\x0A' + vSVN 
-            vOS = vOS + '\x0A\x0AError: \x0A\x0A' + vError 
-#            vOS = vOS + '\x0A\x0AMailto: \x0A\x0A' + vAuthor 
-#            vAuthor='krivenya_a@exon-it.by' 
-            vOS = vOS + '" | mailx -r "pipeline" -s "Error compiling file: ' + vFileName + '" krivenya_a@exon-it.by,' + vAuthor
-            #print(vOS)
-            #print('if not vFirst: --- send email ---',vFileName)
-            os.system(vOS)
 
-        ## This point is start of processing certain error
-        # Clear variables after sending email, preparing for the next error
+        # If not the first erros - send mail and start to form next errorblock
+        if not vFirst and vNewError:
+            senderror()
+
         vFirst = False
         vNewError = True
         vError = ''
@@ -85,7 +103,7 @@ for line in vfLogfile:
         i2 = vAuthor.find("|")
         vAuthor = vSVN[i1+2:i1+i2+1]
 
-        # For some incorrect SVN usernames correcting adresses
+        # For some SVN usernames have to manualy define correct adresses
         exist=0
         if vAuthor=='anaschenko':
             vAuthor='anaschenko_s@exon-it.by'
@@ -99,39 +117,35 @@ for line in vfLogfile:
         if vAuthor=='svekshin':
             vAuthor='vekshin_s@exon-it.by' 
             exist=1
+        if vAuthor=='novicky_v':
+            vAuthor='novickiy_v@exon-it.by' 
+            exist=1
         if vAuthor=='iantonov':
-            vAuthor='krivenya_a@exon-it.by' 
+            vAuthor=vDefault_recepients
             exist=1
         if vAuthor=='popov_v':
-            vAuthor='krivenya_a@exon-it.by' 
+            vAuthor=vDefault_recepients
             exist=1
         if exist==0 :
             vAuthor = vAuthor + '@exon-it.by'
             exist=1
 
-    # Ordinary action in cycle if line does not containg "Error compiling file"  
+    # Ordinary action in cycle if line does not containg "Error compiling file" - adding such line to current errorblock
     vError = vError + line
-    #    print(line)
 
-# After cycle, vError contain text from begining last errortext and up to end of log file - need to cut unuseful text
+# After cycle, vError contain text from the begining of last error and up to end of whole logfile - need to cut unuseful text
 # Define end position of last errortext by searching double CR which means end of last error block
 i1 = vError.find("\n\n")
-vErrorLast = vError[0:i1]
+vError = vError[0:i1]
 
-# Sending mail with last error by OS echo/mailx
-if vNewError:
-    vOS = 'echo -e "Error compiling file:\x0A\x0A' + vFileName 
-    vOS = vOS + '\x0A\x0A\x0ALast commit at SVN repository was: \x0A\x0A' + vSVN
-    vOS = vOS + '\x0A\x0AError: \x0A\x0A' + vErrorLast 
-#    vOS = vOS + '\x0A\x0AMailto: \x0A\x0A' + vAuthor 
-#    vAuthor='krivenya_a@exon-it.by' 
-    vOS = vOS + '" | mailx -r "pipeline" -s "Error compiling file: ' + vFileName + '" krivenya_a@exon-it.by,' + vAuthor
-    os.system(vOS)
-    #print(vOS)
+# Sending mail with last error after cycle have finished
+if vNewError :
+    senderror()
 
+# Closing all files
 vfLogfile.close()
 vfOutfile.close()
+vfPrevFile = open(vcOutfile+'_old', mode="r")
 vfPrevFile.close()
 try: os.remove(vcOutfile+'_old')
 except: pass
-

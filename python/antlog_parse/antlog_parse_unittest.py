@@ -12,7 +12,7 @@ vPRD_NM = os.getenv('PRD_NM')
 vPRD_TST = os.getenv('PRD_TST')
 vTST_NOTIFY = os.getenv('TST_NOTIFY')
 
-vAnt_log_file = vTST_RSLT + '/ant/' + vPRD_NM + '.' + vPRD_TST +'.utst.log'
+vAnt_log_file = vTST_RSLT + '/ant/' + vPRD_NM + '.' + vPRD_TST +'.ant_utst.log'
 vfLogfile = open(vAnt_log_file, mode="r")
 
 vError_ErrorsFailures = False
